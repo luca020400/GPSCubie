@@ -13,13 +13,12 @@ import android.provider.Settings
 import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import com.google.gson.Gson
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
-import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.*
 
 @SuppressLint("MissingPermission", "HardwareIds")
@@ -27,7 +26,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     private val gpsService by lazy {
         val retrofit = Retrofit.Builder()
                 .baseUrl("http://luca020400.duckdns.org:3333")
-                .addConverterFactory(GsonConverterFactory.create(Gson()))
+                .addConverterFactory(MoshiConverterFactory.create())
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .build()
 
