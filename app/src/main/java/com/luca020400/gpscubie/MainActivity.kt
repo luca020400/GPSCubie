@@ -22,8 +22,8 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.*
 
-@SuppressLint("MissingPermission")
-class MainActivity : AppCompatActivity() {
+@SuppressLint("MissingPermission", "HardwareIds")
+class MainActivity : AppCompatActivity(), LocationListener {
     private val gpsService by lazy {
         val retrofit = Retrofit.Builder()
                 .baseUrl("http://luca020400.duckdns.org:3333")
@@ -46,16 +46,14 @@ class MainActivity : AppCompatActivity() {
         SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.ITALY)
     }
 
-    private val mLocationListener = object : LocationListener {
-        override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
+    override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
 
-        override fun onProviderEnabled(provider: String?) {}
+    override fun onProviderEnabled(provider: String?) {}
 
-        override fun onProviderDisabled(provider: String?) {}
+    override fun onProviderDisabled(provider: String?) {}
 
-        override fun onLocationChanged(location: Location) {
-            sendGPSData(location)
-        }
+    override fun onLocationChanged(location: Location) {
+        sendGPSData(location)
     }
 
     private val permissions = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -72,7 +70,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun sendGPSData(location: Location) = with(location) {
-        gpsService.postGPS(GPSData(uuid, latitude, longitude, altitude, formatter.format(Date(time))))
+        val gpsData = GPSData(
+                uuid,
+                latitude,
+                longitude,
+                altitude,
+                formatter.format(Date(time)),
+                provider
+        )
+        gpsService.postGPS(gpsData)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
@@ -92,13 +98,15 @@ class MainActivity : AppCompatActivity() {
         }
 
         send_gps.setOnClickListener {
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 100, 1f, mLocationListener)
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 100, 1f, mLocationListener)
+            val updateTime = 10 * 100L // In millisecond
+            val distance = 10f // In meters
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateTime, distance, this)
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateTime, distance, this)
         }
     }
 
     override fun onPause() {
         super.onPause()
-        locationManager.removeUpdates(mLocationListener)
+        locationManager.removeUpdates(this)
     }
 }
