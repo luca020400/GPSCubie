@@ -101,7 +101,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
     }
 
     private fun downloadRecentStops() {
-        gpsService.getGPS()
+        gpsService.getGPS(10)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
@@ -114,6 +114,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
                         setFocusItemsOnTap(true)
                     }
                     map.overlays.add(overlay)
+                    map.invalidate()
                 }, {
                     Log.e("TAG", "Failed to get recent gps data", it)
                 })
