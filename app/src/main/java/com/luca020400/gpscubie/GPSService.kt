@@ -11,5 +11,5 @@ interface GPSService {
     fun postGPS(@Body data: GPSData): Observable<Response<Void>>
 
     @GET("/get_gps")
-    fun getGPS(): Observable<GPSDataList>
+    fun getGPS(): Observable<List<GPSData>>
 }

@@ -8,7 +8,3 @@ data class GPSData(
         val time: String,
         val provider: String
 )
-
-data class GPSDataList(
-        val data: List<GPSData>
-)

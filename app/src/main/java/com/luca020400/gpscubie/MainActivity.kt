@@ -9,6 +9,7 @@ import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.provider.Settings
 import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
@@ -16,6 +17,12 @@ import android.util.Log
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.activity_main.*
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.overlay.ItemizedOverlayWithFocus
+import org.osmdroid.views.overlay.OverlayItem
+import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -45,6 +52,7 @@ class MainActivity : AppCompatActivity(), LocationListener {
         SimpleDateFormat("yyyy/MM/dd HH:mm:ss", Locale.ITALY)
     }
 
+
     override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
 
     override fun onProviderEnabled(provider: String?) {}
@@ -57,6 +65,9 @@ class MainActivity : AppCompatActivity(), LocationListener {
 
     private val permissions = arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
     private val myPermission = 100
+
+    private val updateTime = 10 * 100L // In millisecond
+    private val distance = 10f // In meters
 
     private fun hasPermissions(context: Context, permissions: Array<String>): Boolean {
         for (permission in permissions) {
@@ -77,18 +88,42 @@ class MainActivity : AppCompatActivity(), LocationListener {
                 formatter.format(Date(time)),
                 provider
         )
+        map.controller.setCenter(GeoPoint(latitude, longitude))
         gpsService.postGPS(gpsData)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({
                     Log.d("TAG", "Sent successfully")
+                    downloadRecentStops()
                 }, {
                     Log.e("TAG", "Error while sending GPS data", it)
                 })
     }
 
+    private fun downloadRecentStops() {
+        gpsService.getGPS()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    Log.d("TAG", "Downloaded recent data successfully")
+                    val geoPoints = mutableListOf<OverlayItem>()
+                    it.forEach {
+                        geoPoints.add(OverlayItem(it.uuid, it.time, GeoPoint(it.latitude, it.longitude)))
+                    }
+                    val overlay = ItemizedOverlayWithFocus<OverlayItem>(this, geoPoints, null).apply {
+                        setFocusItemsOnTap(true)
+                    }
+                    map.overlays.add(overlay)
+                }, {
+                    Log.e("TAG", "Failed to get recent gps data", it)
+                })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this))
+
         setContentView(R.layout.activity_main)
 
         if (!hasPermissions(this, permissions)) {
@@ -96,16 +131,30 @@ class MainActivity : AppCompatActivity(), LocationListener {
             return
         }
 
-        send_gps.setOnClickListener {
-            val updateTime = 10 * 100L // In millisecond
-            val distance = 10f // In meters
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateTime, distance, this)
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateTime, distance, this)
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateTime, distance, this)
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateTime, distance, this)
+        locationManager.requestSingleUpdate(LocationManager.GPS_PROVIDER, this, null)
+
+        with(map) {
+            setTileSource(TileSourceFactory.MAPNIK)
+            setBuiltInZoomControls(true)
+            setMultiTouchControls(true)
+            setMultiTouchControls(true)
+            overlays.add(RotationGestureOverlay(this))
+            controller.setZoom(10.0)
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateTime, distance, this)
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateTime, distance, this)
+        map.onResume()
     }
 
     override fun onPause() {
         super.onPause()
         locationManager.removeUpdates(this)
+        map.onPause()
     }
 }
