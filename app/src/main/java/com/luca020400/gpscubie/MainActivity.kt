@@ -23,21 +23,13 @@ import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.overlay.ItemizedOverlayWithFocus
 import org.osmdroid.views.overlay.OverlayItem
 import org.osmdroid.views.overlay.gestures.RotationGestureOverlay
-import retrofit2.Retrofit
-import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory
-import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.*
 
 @SuppressLint("MissingPermission", "HardwareIds")
 class MainActivity : AppCompatActivity(), LocationListener {
     private val gpsService by lazy {
-        val retrofit = Retrofit.Builder()
-                .baseUrl("http://luca020400.duckdns.org:3333")
-                .addConverterFactory(MoshiConverterFactory.create())
-                .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                .build()
-
-        retrofit.create(GPSService::class.java)
+        GPSServiceGenerator().createService(GPSService::class.java,
+                BuildConfig.USERNAME, BuildConfig.PASSWORD)
     }
 
     private val locationManager by lazy {

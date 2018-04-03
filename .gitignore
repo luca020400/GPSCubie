@@ -65,3 +65,6 @@ fastlane/readme.md
 
 # Key
 keystore.properties
+
+# Server auth
+server.properties
